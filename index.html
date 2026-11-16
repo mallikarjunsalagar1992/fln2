@@ -1459,21 +1459,383 @@
       return [{ name: 'Resources', html: renderResourcesHTML(), cols: 4, fitHeight: true }];
     }
 
+    // =========================================================================
+    // SELF-CONTAINED .XLSX WRITER (ಯಾವುದೇ CDN library ಬೇಕಿಲ್ಲ - Excel ನಲ್ಲಿ ಖಚಿತವಾಗಿ ತೆರೆಯುತ್ತದೆ)
+    // =========================================================================
+    const XW_CRC_TABLE = (() => {
+      const t = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        t[n] = c >>> 0;
+      }
+      return t;
+    })();
+
+    function xwCrc32(bytes) {
+      let crc = 0xFFFFFFFF;
+      for (let i = 0; i < bytes.length; i++) crc = XW_CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+      return (crc ^ 0xFFFFFFFF) >>> 0;
+    }
+
+    // Simple ZIP (STORE method) builder
+    function xwBuildZip(files) {
+      const enc = new TextEncoder();
+      const chunks = [];
+      const central = [];
+      let offset = 0;
+      const d = new Date();
+      const dosTime = ((d.getHours() << 11) | (d.getMinutes() << 5) | (Math.floor(d.getSeconds() / 2))) & 0xFFFF;
+      const dosDate = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF;
+
+      files.forEach(f => {
+        const nameBytes = enc.encode(f.name);
+        const data = enc.encode(f.content);
+        const crc = xwCrc32(data);
+
+        const lh = new DataView(new ArrayBuffer(30));
+        lh.setUint32(0, 0x04034b50, true);
+        lh.setUint16(4, 20, true);
+        lh.setUint16(6, 0x0800, true);
+        lh.setUint16(8, 0, true);
+        lh.setUint16(10, dosTime, true);
+        lh.setUint16(12, dosDate, true);
+        lh.setUint32(14, crc, true);
+        lh.setUint32(18, data.length, true);
+        lh.setUint32(22, data.length, true);
+        lh.setUint16(26, nameBytes.length, true);
+        lh.setUint16(28, 0, true);
+        chunks.push(new Uint8Array(lh.buffer), nameBytes, data);
+
+        const ch = new DataView(new ArrayBuffer(46));
+        ch.setUint32(0, 0x02014b50, true);
+        ch.setUint16(4, 20, true);
+        ch.setUint16(6, 20, true);
+        ch.setUint16(8, 0x0800, true);
+        ch.setUint16(10, 0, true);
+        ch.setUint16(12, dosTime, true);
+        ch.setUint16(14, dosDate, true);
+        ch.setUint32(16, crc, true);
+        ch.setUint32(20, data.length, true);
+        ch.setUint32(24, data.length, true);
+        ch.setUint16(28, nameBytes.length, true);
+        ch.setUint16(30, 0, true);
+        ch.setUint16(32, 0, true);
+        ch.setUint16(34, 0, true);
+        ch.setUint16(36, 0, true);
+        ch.setUint32(38, 0, true);
+        ch.setUint32(42, offset, true);
+        central.push(new Uint8Array(ch.buffer), nameBytes);
+
+        offset += 30 + nameBytes.length + data.length;
+      });
+
+      const centralSize = central.reduce((s, c) => s + c.length, 0);
+      const end = new DataView(new ArrayBuffer(22));
+      end.setUint32(0, 0x06054b50, true);
+      end.setUint16(4, 0, true);
+      end.setUint16(6, 0, true);
+      end.setUint16(8, files.length, true);
+      end.setUint16(10, files.length, true);
+      end.setUint32(12, centralSize, true);
+      end.setUint32(16, offset, true);
+      end.setUint16(20, 0, true);
+
+      return new Blob([...chunks, ...central, new Uint8Array(end.buffer)], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+    }
+
+    function xwEsc(s) {
+      return String(s ?? '')
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F  ]/g, '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function xwColName(c) {
+      let s = '';
+      c++;
+      while (c > 0) {
+        const m = (c - 1) % 26;
+        s = String.fromCharCode(65 + m) + s;
+        c = Math.floor((c - 1) / 26);
+      }
+      return s;
+    }
+
+    function xwCellRef(r, c) { return xwColName(c) + (r + 1); }
+
+    function xwSafeSheetNames(names) {
+      const used = new Set();
+      return names.map((n, i) => {
+        let base = String(n || `Sheet${i + 1}`).replace(/[\\\/\?\*\[\]:]/g, '_').replace(/^'+|'+$/g, '').trim();
+        if (!base) base = `Sheet${i + 1}`;
+        base = Array.from(base).slice(0, 31).join('');
+        let name = base;
+        let k = 2;
+        while (used.has(name.toLowerCase())) {
+          const suffix = `_${k++}`;
+          name = Array.from(base).slice(0, 31 - suffix.length).join('') + suffix;
+        }
+        used.add(name.toLowerCase());
+        return name;
+      });
+    }
+
+    // Style registry -> styles.xml
+    function xwCreateStyleRegistry() {
+      const fonts = ['<font><sz val="11"/><color rgb="FF000000"/><name val="Calibri"/><family val="2"/></font>'];
+      const fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>'];
+      const borders = ['<border><left/><right/><top/><bottom/><diagonal/></border>'];
+      const xfs = ['<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'];
+      const fontMap = {}, fillMap = {}, borderMap = {}, xfMap = {};
+
+      const getId = (map, arr, xml) => {
+        if (map[xml] === undefined) { map[xml] = arr.length; arr.push(xml); }
+        return map[xml];
+      };
+
+      function add(style) {
+        style = style || {};
+        const f = style.font || {};
+        const color = (f.color && f.color.rgb) ? f.color.rgb : '000000';
+        const fontXml = `<font>${f.bold ? '<b/>' : ''}<sz val="${f.sz || 11}"/><color rgb="FF${color}"/><name val="${xwEsc(f.name || 'Calibri')}"/><family val="2"/></font>`;
+        const fontId = getId(fontMap, fonts, fontXml);
+
+        let fillId = 0;
+        if (style.fill && style.fill.fgColor && style.fill.fgColor.rgb) {
+          const rgb = style.fill.fgColor.rgb;
+          fillId = getId(fillMap, fills, `<fill><patternFill patternType="solid"><fgColor rgb="FF${rgb}"/><bgColor indexed="64"/></patternFill></fill>`);
+        }
+
+        let borderId = 0;
+        if (style.border) {
+          borderId = getId(borderMap, borders,
+            '<border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>');
+        }
+
+        const a = style.alignment || {};
+        const alignXml = `<alignment horizontal="${a.horizontal || 'center'}" vertical="${a.vertical || 'center'}"${a.wrapText ? ' wrapText="1"' : ''}/>`;
+        const xfXml = `<xf numFmtId="0" fontId="${fontId}" fillId="${fillId}" borderId="${borderId}" xfId="0" applyFont="1"${fillId ? ' applyFill="1"' : ''}${borderId ? ' applyBorder="1"' : ''} applyAlignment="1">${alignXml}</xf>`;
+        return getId(xfMap, xfs, xfXml);
+      }
+
+      function toXml() {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+          `<fonts count="${fonts.length}">${fonts.join('')}</fonts>` +
+          `<fills count="${fills.length}">${fills.join('')}</fills>` +
+          `<borders count="${borders.length}">${borders.join('')}</borders>` +
+          '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+          `<cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs>` +
+          '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+          '</styleSheet>';
+      }
+
+      return { add, toXml };
+    }
+
+    function xwBuildSheetXml(combinedTable, totalCols, fitHeight, styles) {
+      const occupied = {};
+      const cellMeta = {};
+      const merges = [];
+      const rows = Array.from(combinedTable.querySelectorAll('tr'));
+      const totalRows = rows.length;
+
+      rows.forEach((tr, r) => {
+        let c = 0;
+        Array.from(tr.children).forEach(td => {
+          while (occupied[`${r},${c}`]) c++;
+          if (c >= totalCols) return;
+          const rs = Math.max(1, parseInt(td.getAttribute('rowspan') || '1', 10) || 1);
+          let cs = Math.max(1, parseInt(td.getAttribute('colspan') || '1', 10) || 1);
+          if (c + cs > totalCols) cs = totalCols - c;
+          const styleId = styles.add(deriveCellStyle(tr, td, totalCols));
+          const cleanText = td.textContent.replace(/\s+/g, ' ').trim();
+
+          for (let rr = r; rr < r + rs; rr++) {
+            for (let cc = c; cc < c + cs; cc++) {
+              occupied[`${rr},${cc}`] = true;
+              cellMeta[`${rr},${cc}`] = {
+                styleId,
+                text: (rr === r && cc === c) ? cleanText : '',
+                rs, cs,
+                isAnchor: (rr === r && cc === c)
+              };
+            }
+          }
+          if (rs > 1 || cs > 1) {
+            merges.push(`${xwCellRef(r, c)}:${xwCellRef(Math.min(r + rs - 1, totalRows - 1), c + cs - 1)}`);
+          }
+          c += cs;
+        });
+      });
+
+      // Column widths (same as before)
+      const colWidths = [];
+      for (let i = 0; i < totalCols; i++) {
+        if (totalCols <= 6) colWidths.push(i === 0 ? 7 : 34);
+        else if (i === 0) colWidths.push(4.2);
+        else if (i === 1) colWidths.push(totalCols >= 30 ? 14 : 18);
+        else if (i === 2) colWidths.push(totalCols >= 30 ? 6.5 : 7.5);
+        else if (totalCols >= 30 && i <= 4) colWidths.push(6);
+        else colWidths.push(totalCols >= 30 ? 5.6 : 7.2);
+      }
+
+      // Row heights (same as before)
+      const isMaths = totalCols >= 30;
+      const rowHeights = [];
+      for (let r = 0; r < totalRows; r++) {
+        if (rows[r].classList.contains('excel-sig')) { rowHeights.push(32); continue; }
+        let maxLines = 1;
+        for (let c = 0; c < totalCols; c++) {
+          const meta = cellMeta[`${r},${c}`];
+          if (!meta || !meta.isAnchor || !meta.text) continue;
+          let effW = 0;
+          for (let cc = c; cc < Math.min(totalCols, c + meta.cs); cc++) effW += colWidths[cc] || 6;
+          const charsPerLine = Math.max(4, Math.floor(effW * (isMaths ? 0.85 : 0.78)));
+          const wrappedLines = Math.ceil(meta.text.length / charsPerLine);
+          const perRowLines = Math.ceil(wrappedLines / meta.rs);
+          if (perRowLines > maxLines) maxLines = perRowLines;
+        }
+        const lineH = isMaths ? 11.5 : 12.5;
+        rowHeights.push(Math.max(15, Math.min(115, maxLines * lineH + 4)));
+      }
+
+      let sheetData = '';
+      for (let r = 0; r < totalRows; r++) {
+        let rowXml = '';
+        for (let c = 0; c < totalCols; c++) {
+          const meta = cellMeta[`${r},${c}`];
+          if (!meta) continue;
+          const ref = xwCellRef(r, c);
+          const txt = meta.text;
+          if (txt === '') {
+            rowXml += `<c r="${ref}" s="${meta.styleId}"/>`;
+          } else if (/^-?\d{1,12}$/.test(txt)) {
+            rowXml += `<c r="${ref}" s="${meta.styleId}"><v>${Number(txt)}</v></c>`;
+          } else {
+            rowXml += `<c r="${ref}" s="${meta.styleId}" t="inlineStr"><is><t xml:space="preserve">${xwEsc(txt)}</t></is></c>`;
+          }
+        }
+        sheetData += `<row r="${r + 1}" ht="${rowHeights[r]}" customHeight="1">${rowXml}</row>`;
+      }
+
+      const lastRef = xwCellRef(Math.max(0, totalRows - 1), Math.max(0, totalCols - 1));
+      const colsXml = colWidths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('');
+      const mergeXml = merges.length ? `<mergeCells count="${merges.length}">${merges.map(m => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>` : '';
+
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+        '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' +
+        `<dimension ref="A1:${lastRef}"/>` +
+        '<sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
+        '<sheetFormatPr defaultRowHeight="15"/>' +
+        `<cols>${colsXml}</cols>` +
+        `<sheetData>${sheetData}</sheetData>` +
+        mergeXml +
+        '<pageMargins left="0.18" right="0.18" top="0.22" bottom="0.22" header="0.1" footer="0.1"/>' +
+        `<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="${fitHeight ? 1 : 0}"/>` +
+        '</worksheet>';
+    }
+
+    function buildXlsxBlobFromSheets(sheets) {
+      const styles = xwCreateStyleRegistry();
+      const names = xwSafeSheetNames(sheets.map(s => s.name));
+      const files = [];
+
+      const sheetXmls = sheets.map(s => xwBuildSheetXml(s.table, s.cols, s.fitHeight, styles));
+
+      files.push({
+        name: '[Content_Types].xml',
+        content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+          '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+          '<Default Extension="xml" ContentType="application/xml"/>' +
+          '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+          sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') +
+          '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+          '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+          '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+          '</Types>'
+      });
+
+      files.push({
+        name: '_rels/.rels',
+        content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+          '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
+          '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
+          '</Relationships>'
+      });
+
+      const nowIso = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+      files.push({
+        name: 'docProps/core.xml',
+        content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
+          '<dc:title>FLN 2026-27</dc:title><dc:creator>FLN Form</dc:creator>' +
+          `<dcterms:created xsi:type="dcterms:W3CDTF">${nowIso}</dcterms:created>` +
+          `<dcterms:modified xsi:type="dcterms:W3CDTF">${nowIso}</dcterms:modified>` +
+          '</cp:coreProperties>'
+      });
+
+      files.push({
+        name: 'docProps/app.xml',
+        content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">' +
+          '<Application>Microsoft Excel</Application></Properties>'
+      });
+
+      files.push({
+        name: 'xl/workbook.xml',
+        content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+          '<bookViews><workbookView xWindow="0" yWindow="0" windowWidth="28800" windowHeight="12300"/></bookViews>' +
+          '<sheets>' + names.map((n, i) => `<sheet name="${xwEsc(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') + '</sheets>' +
+          '</workbook>'
+      });
+
+      files.push({
+        name: 'xl/_rels/workbook.xml.rels',
+        content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('') +
+          `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+          '</Relationships>'
+      });
+
+      files.push({ name: 'xl/styles.xml', content: styles.toXml() });
+      sheetXmls.forEach((xml, i) => files.push({ name: `xl/worksheets/sheet${i + 1}.xml`, content: xml }));
+
+      return xwBuildZip(files);
+    }
+
+    function downloadBlob(blob, filename) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    }
+
     async function exportCurrentToExcel() {
       const specs = getSheetSpecsForCurrent();
       const s = specs[0];
       const combined = buildCombinedExportTableFromSheetHTML(s.html, s.cols);
       const safeFile = `FLN_2026_27_${s.name}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-
-      if (typeof XLSX === 'undefined') {
+      try {
+        const blob = buildXlsxBlobFromSheets([{ name: s.name, table: combined, cols: s.cols, fitHeight: s.fitHeight }]);
+        downloadBlob(blob, safeFile);
+      } catch (err) {
+        console.error('Excel export error:', err);
         fallbackDownloadHtmlAsXls([{ name: s.name, table: combined }], safeFile);
-        return;
       }
-
-      const wb = XLSX.utils.book_new();
-      const ws = createStyledWorksheetFromTable(combined, s.cols);
-      XLSX.utils.book_append_sheet(wb, ws, s.name.slice(0, 31));
-      await writeWorkbookWithA4Setup(wb, safeFile, [s.fitHeight]);
     }
 
     async function exportAllToExcel() {
@@ -1503,25 +1865,20 @@
       });
 
       const filename = `FLN_2026_27_Full_School_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const prepared = sheetsToExport.map(s => ({
+        name: s.name,
+        table: buildCombinedExportTableFromSheetHTML(s.html, s.cols),
+        cols: s.cols,
+        fitHeight: s.fitHeight
+      }));
 
-      if (typeof XLSX === 'undefined') {
-        const tables = sheetsToExport.map(s => ({
-          name: s.name,
-          table: buildCombinedExportTableFromSheetHTML(s.html, s.cols)
-        }));
-        fallbackDownloadHtmlAsXls(tables, filename);
-        return;
+      try {
+        const blob = buildXlsxBlobFromSheets(prepared);
+        downloadBlob(blob, filename);
+      } catch (err) {
+        console.error('Excel export error:', err);
+        fallbackDownloadHtmlAsXls(prepared.map(p => ({ name: p.name, table: p.table })), filename);
       }
-
-      const wb = XLSX.utils.book_new();
-      const fitFlags = [];
-      sheetsToExport.forEach(s => {
-        const combined = buildCombinedExportTableFromSheetHTML(s.html, s.cols);
-        const ws = createStyledWorksheetFromTable(combined, s.cols);
-        XLSX.utils.book_append_sheet(wb, ws, s.name.slice(0, 31));
-        fitFlags.push(s.fitHeight);
-      });
-      await writeWorkbookWithA4Setup(wb, filename, fitFlags);
     }
 
     // =========================================================================
