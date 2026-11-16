@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="kn">
 <head>
@@ -997,10 +996,6 @@
       right:  { style: 'thin', color: { rgb: '000000' } }
     };
 
-    function sanitizeXmlText(str) {
-      return String(str ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
-    }
-
     function buildCombinedExportTableFromSheetHTML(sheetHtml, totalCols) {
       const temp = document.createElement('div');
       temp.innerHTML = sheetHtml;
@@ -1011,13 +1006,13 @@
       if (emptyTd) emptyTd.setAttribute('colspan', String(totalCols));
 
       temp.querySelectorAll('input').forEach(inp => {
-        const txt = document.createTextNode(sanitizeXmlText(inp.value || ''));
+        const txt = document.createTextNode(inp.value || '');
         inp.parentNode.replaceChild(txt, inp);
       });
       temp.querySelectorAll('select').forEach(sel => {
         const opt = sel.querySelector('option[selected]') || sel.options[sel.selectedIndex];
         const valText = opt ? opt.textContent : (sel.value || '');
-        const txt = document.createTextNode(sanitizeXmlText(valText));
+        const txt = document.createTextNode(valText);
         sel.parentNode.replaceChild(txt, sel);
       });
 
@@ -1029,7 +1024,7 @@
         if (rowClass) tr.className = rowClass;
         const td = document.createElement('td');
         td.setAttribute('colspan', String(totalCols));
-        td.textContent = sanitizeXmlText(text);
+        td.textContent = text;
         tr.appendChild(td);
         topBody.appendChild(tr);
       };
@@ -1077,7 +1072,7 @@
           tr.className = 'excel-note-title';
           const td = document.createElement('td');
           td.setAttribute('colspan', String(totalCols));
-          td.textContent = sanitizeXmlText(h4.textContent.trim());
+          td.textContent = h4.textContent.trim();
           tr.appendChild(td);
           noteBody.appendChild(tr);
         }
@@ -1090,7 +1085,7 @@
           const td = document.createElement('td');
           td.setAttribute('colspan', String(totalCols));
           const prefix = item.tagName === 'LI' ? `${idx + 1}. ` : '';
-          td.textContent = sanitizeXmlText(prefix + item.textContent.replace(/\s+/g, ' ').trim());
+          td.textContent = prefix + item.textContent.replace(/\s+/g, ' ').trim();
           tr.appendChild(td);
           noteBody.appendChild(tr);
         });
@@ -1105,7 +1100,7 @@
         const td = document.createElement('td');
         td.setAttribute('colspan', String(totalCols));
         const sigs = Array.from(sigFooter.querySelectorAll('.sig-box')).map(b => b.textContent.replace(/\s+/g, ' ').trim());
-        td.textContent = sanitizeXmlText(sigs.join('          |          '));
+        td.textContent = sigs.join('          |          ');
         tr.appendChild(td);
         sigBody.appendChild(tr);
         combined.appendChild(sigBody);
@@ -1127,42 +1122,42 @@
       if (trCls.contains('excel-gov')) {
         return {
           font: { ...baseFont, sz: 9.5, bold: true },
-          alignment: { ...baseAlign }
+          alignment: baseAlign
         };
       }
       if (trCls.contains('excel-subj')) {
         return {
-          fill: { patternType: 'solid', fgColor: { rgb: 'D9E1F2' } },
+          fill: { fgColor: { rgb: 'D9E1F2' } },
           font: { ...baseFont, sz: 9, bold: true },
           border: THIN_BORDER,
-          alignment: { ...baseAlign }
+          alignment: baseAlign
         };
       }
       if (trCls.contains('excel-annex')) {
         return {
           font: { ...baseFont, sz: 9.5, bold: true },
-          alignment: { ...baseAlign }
+          alignment: baseAlign
         };
       }
       if (trCls.contains('excel-subtitle')) {
         return {
-          fill: { patternType: 'solid', fgColor: { rgb: 'FFF200' } },
+          fill: { fgColor: { rgb: 'FFF200' } },
           font: { ...baseFont, sz: 9, bold: true },
           border: THIN_BORDER,
-          alignment: { ...baseAlign }
+          alignment: baseAlign
         };
       }
       if (trCls.contains('excel-meta')) {
         return {
-          fill: { patternType: 'solid', fgColor: { rgb: 'E2EFDA' } },
+          fill: { fgColor: { rgb: 'E2EFDA' } },
           font: { ...baseFont, sz: 8.5, bold: true },
           border: THIN_BORDER,
-          alignment: { ...baseAlign }
+          alignment: baseAlign
         };
       }
       if (trCls.contains('excel-note-title')) {
         return {
-          fill: { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } },
+          fill: { fgColor: { rgb: 'FFF2CC' } },
           font: { ...baseFont, sz: 8, bold: true },
           border: THIN_BORDER,
           alignment: { ...baseAlign, horizontal: 'left' }
@@ -1170,7 +1165,7 @@
       }
       if (trCls.contains('excel-note-yellow')) {
         return {
-          fill: { patternType: 'solid', fgColor: { rgb: 'FFF200' } },
+          fill: { fgColor: { rgb: 'FFF200' } },
           font: { ...baseFont, sz: 8, bold: true },
           border: THIN_BORDER,
           alignment: { ...baseAlign, horizontal: 'left' }
@@ -1178,7 +1173,7 @@
       }
       if (trCls.contains('excel-note-blue')) {
         return {
-          fill: { patternType: 'solid', fgColor: { rgb: 'DEEBF7' } },
+          fill: { fgColor: { rgb: 'DEEBF7' } },
           font: { ...baseFont, sz: 8 },
           border: THIN_BORDER,
           alignment: { ...baseAlign, horizontal: 'left' }
@@ -1186,7 +1181,7 @@
       }
       if (trCls.contains('excel-note')) {
         return {
-          fill: { patternType: 'solid', fgColor: { rgb: 'F9FAFB' } },
+          fill: { fgColor: { rgb: 'F9FAFB' } },
           font: { ...baseFont, sz: 8 },
           border: THIN_BORDER,
           alignment: { ...baseAlign, horizontal: 'left' }
@@ -1214,27 +1209,27 @@
       }
 
       if (tdCls.contains('grade-A')) {
-        fill = { patternType: 'solid', fgColor: { rgb: 'DCFCE7' } };
+        fill = { fgColor: { rgb: 'DCFCE7' } };
         font.color = { rgb: '166534' };
         font.bold = true;
       } else if (tdCls.contains('grade-B')) {
-        fill = { patternType: 'solid', fgColor: { rgb: 'FEE2E2' } };
+        fill = { fgColor: { rgb: 'FEE2E2' } };
         font.color = { rgb: '991B1B' };
         font.bold = true;
       } else if (tdCls.contains('bg-yellow')) {
-        fill = { patternType: 'solid', fgColor: { rgb: 'FFF200' } };
+        fill = { fgColor: { rgb: 'FFF200' } };
         font.bold = true;
       } else if (tdCls.contains('bg-cream')) {
-        fill = { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } };
+        fill = { fgColor: { rgb: 'FFF2CC' } };
         font.bold = true;
       } else if (tdCls.contains('bg-blue') || trCls.contains('grand-total-row')) {
-        fill = { patternType: 'solid', fgColor: { rgb: 'D9E1F2' } };
+        fill = { fgColor: { rgb: 'D9E1F2' } };
         font.bold = true;
       } else if (trCls.contains('total-row')) {
-        fill = { patternType: 'solid', fgColor: { rgb: 'EDEDED' } };
+        fill = { fgColor: { rgb: 'EDEDED' } };
         font.bold = true;
       } else if (isTh) {
-        fill = { patternType: 'solid', fgColor: { rgb: 'DDEBF7' } };
+        fill = { fgColor: { rgb: 'DDEBF7' } };
       } else if (td.querySelector('strong')) {
         font.bold = true;
       }
@@ -1257,7 +1252,7 @@
           const rs = parseInt(td.getAttribute('rowspan') || '1', 10);
           const cs = parseInt(td.getAttribute('colspan') || '1', 10);
           const styleObj = deriveCellStyle(tr, td, totalCols);
-          const cleanText = sanitizeXmlText(td.textContent.replace(/\s+/g, ' ').trim());
+          const cleanText = td.textContent.replace(/\s+/g, ' ').trim();
 
           for (let rr = r; rr < r + rs; rr++) {
             for (let cc = c; cc < c + cs; cc++) {
@@ -1275,14 +1270,7 @@
         });
       });
 
-      const ws = XLSX.utils.table_to_sheet(combinedTable, { raw: true });
-
-      if (totalRows > 0 && totalCols > 0) {
-        ws['!ref'] = XLSX.utils.encode_range({
-          s: { r: 0, c: 0 },
-          e: { r: totalRows - 1, c: totalCols - 1 }
-        });
-      }
+      const ws = XLSX.utils.table_to_sheet(combinedTable);
 
       const colWidths = [];
       for (let i = 0; i < totalCols; i++) {
@@ -1301,7 +1289,6 @@
         }
       }
       ws['!cols'] = colWidths.map(wch => ({ wch }));
-      ws['!margins'] = { left: 0.18, right: 0.18, top: 0.22, bottom: 0.22, header: 0.1, footer: 0.1 };
 
       for (let r = 0; r < totalRows; r++) {
         for (let c = 0; c < totalCols; c++) {
@@ -1310,14 +1297,6 @@
           const addr = XLSX.utils.encode_cell({ r, c });
           if (!ws[addr]) {
             ws[addr] = { t: 's', v: '' };
-          } else if (typeof ws[addr].v === 'string') {
-            const clean = sanitizeXmlText(ws[addr].v).trim();
-            if (/^(?:0|[1-9]\d{0,11})$/.test(clean)) {
-              ws[addr].t = 'n';
-              ws[addr].v = Number(clean);
-            } else {
-              ws[addr].v = sanitizeXmlText(ws[addr].v);
-            }
           }
           ws[addr].s = meta.style;
         }
@@ -1355,10 +1334,11 @@
 
     async function writeWorkbookWithA4Setup(wb, filename, fitHeightFlags) {
       if (typeof JSZip === 'undefined') {
-        XLSX.writeFile(wb, filename, { ignoreEC: false });
+        XLSX.writeFile(wb, filename);
         return;
       }
       try {
+        // ignoreEC:false -> <ignoredErrors> ಟ್ಯಾಗ್ ಬರೆಯದಂತೆ (ಇದು pageSetup ಕ್ರಮವನ್ನು ಕೆಡಿಸುತ್ತಿತ್ತು)
         const wbOut = XLSX.write(wb, { type: 'array', bookType: 'xlsx', ignoreEC: false });
         const zip = await JSZip.loadAsync(wbOut);
 
@@ -1370,45 +1350,46 @@
 
           const fitH = fitHeightFlags[i] ? '1' : '0';
 
-          // 1. Replace or insert <sheetPr> (handles <sheetPr/>, <sheetPr .../>, and <sheetPr>...</sheetPr>)
-          const sheetPrRegex = /<sheetPr(?:\s[^>]*?)?\/>|<sheetPr(?:\s[^>]*?)?>[\s\S]*?<\/sheetPr>/;
-          if (sheetPrRegex.test(xml)) {
-            xml = xml.replace(sheetPrRegex, '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+          if (/<sheetPr[\s>]/.test(xml)) {
+            xml = xml.replace(/<sheetPr[^>]*\/>|<sheetPr[\s\S]*?<\/sheetPr>/, '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
           } else {
             xml = xml.replace(/(<worksheet[^>]*>)/, '$1<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
           }
 
-          // 2. Remove any existing <pageMargins> and <pageSetup>
-          xml = xml.replace(/<pageMargins(?:\s[^>]*?)?\/>|<pageMargins(?:\s[^>]*?)?>[\s\S]*?<\/pageMargins>/g, '');
-          xml = xml.replace(/<pageSetup(?:\s[^>]*?)?\/>|<pageSetup(?:\s[^>]*?)?>[\s\S]*?<\/pageSetup>/g, '');
+          xml = xml.replace(/<pageMargins[^>]*\/>/g, '');
+          xml = xml.replace(/<pageSetup[^>]*\/>/g, '');
 
-          // 3. Insert <pageMargins> & <pageSetup> in strict ECMA-376 CT_Worksheet XSD order
           const printTags = `<pageMargins left="0.18" right="0.18" top="0.22" bottom="0.22" header="0.1" footer="0.1"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="${fitH}"/>`;
-          const postPageSetupRegex = /<(?:headerFooter|rowBreaks|colBreaks|customProperties|cellWatches|ignoredErrors|smartTags|drawing|legacyDrawing|legacyDrawingHF|drawingHF|picture|oleObjects|controls|webPublishItems|tableParts|extLst)(?=[\s>\/])|<\/worksheet>/;
-          xml = xml.replace(postPageSetupRegex, match => printTags + match);
+
+          // FIX: Excel ನಿಯಮದ ಪ್ರಕಾರ pageMargins/pageSetup ಈ ಟ್ಯಾಗ್‌ಗಳ ಮೊದಲೇ ಬರಬೇಕು.
+          // ಹಿಂದೆ ಇವು </worksheet> ಮೊದಲು (ignoredErrors ನಂತರ) ಸೇರುತ್ತಿದ್ದವು -> Excel ಫೈಲ್ ತೆರೆಯುತ್ತಿರಲಿಲ್ಲ.
+          const afterTags = ['headerFooter', 'rowBreaks', 'colBreaks', 'customProperties', 'cellWatches',
+            'ignoredErrors', 'smartTags', 'drawing', 'legacyDrawing', 'legacyDrawingHF', 'picture',
+            'oleObjects', 'controls', 'webPublishItems', 'tableParts', 'extLst'];
+          let insertAt = -1;
+          afterTags.forEach(tag => {
+            const m = new RegExp('<' + tag + '[\\s>/]').exec(xml);
+            if (m && (insertAt === -1 || m.index < insertAt)) insertAt = m.index;
+          });
+          if (insertAt === -1) insertAt = xml.lastIndexOf('</worksheet>');
+          xml = xml.slice(0, insertAt) + printTags + xml.slice(insertAt);
 
           zip.file(path, xml);
         }
 
         const blob = await zip.generateAsync({
           type: 'blob',
-          compression: 'DEFLATE',
-          compressionOptions: { level: 6 },
           mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         });
-        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
+        a.href = URL.createObjectURL(blob);
         a.download = filename;
         document.body.appendChild(a);
         a.click();
-        setTimeout(() => {
-          if (a.parentNode) a.parentNode.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 1500);
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
       } catch (err) {
         console.warn('JSZip A4 injection fallback:', err);
-        XLSX.writeFile(wb, filename, { ignoreEC: false });
+        XLSX.writeFile(wb, filename);
       }
     }
 
@@ -3308,7 +3289,7 @@
             <th colspan="5">FN LO-1. ಮೂರು ಅಂಕಿಯ ಸಂಖ್ಯೆಯನ್ನು ಓದುವರು, ಬರೆಯುವರು ಮತ್ತು ಅರ್ಥೈಸಿಕೊಳ್ಳುವರು.</th>
             <th colspan="11">FN LO-2. ಕನಿಷ್ಠ ಮೂರು ಅಂಕೆಗಳ ಸಂಕಲನ, ವ್ಯವಕಲನ, ಗುಣಾಕಾರ ಮತ್ತು ಭಾಗಾಕಾರ ಲೆಕ್ಕಗಳನ್ನು ಮಾಡುವರು. (ತರಗತಿ 4-5)</th>
             <th colspan="6" rowspan="2">FN LO-3. ಗಣಿತದ ಮೂಲ ಕ್ರಿಯೆಗಳನ್ನು ಬಳಸಿ ವಾಕ್ಯ ರೂಪದ ಲೆಕ್ಕಗಳನ್ನು ಬಿಡಿಸುವರು.</th>
-            <th colspan="6" rowspan="2">FLN LO-4. ನಿತ್ಯ ಜೀವನದಲ್ಲಿ ಗಣಿತದ ಕ್ರಿಯೆಗಳನ್ನು ಅನ್ವಯಿಸುವರು. (ಸಮಯ, ಹಣ, ಅಳತೆ ಮತ್ತು ದತ್ತಾಂಶ).</th>
+            <th colspan="6" rowspan="2">FN LO-4. ನಿತ್ಯ ಜೀವನದಲ್ಲಿ ಗಣಿತದ ಕ್ರಿಯೆಗಳನ್ನು ಅನ್ವಯಿಸುವರು. (ಸಮಯ, ಹಣ, ಅಳತೆ ಮತ್ತು ದತ್ತಾಂಶ).</th>
           </tr>
           <tr>
             <th colspan="5">FN LO-1. ನಾಲ್ಕು ಅಂಕಿಯ ಸಂಖ್ಯೆಯನ್ನು ಓದುವರು, ಬರೆಯುವರು ಮತ್ತು ಅರ್ಥೈಸಿಕೊಳ್ಳುವರು.</th>
