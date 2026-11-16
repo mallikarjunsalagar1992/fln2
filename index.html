@@ -1,29 +1,4 @@
-ನಿಮ್ಮ index.html ನಲ್ಲಿ Excel Export (.xlsx) Open ಆಗದಿರಲು ಕಾರಣವಾಗಿದ್ದ ತಾಂತ್ರಿಕ
-ದೋಷವನ್ನು ಮಾತ್ರ ಸರಿಪಡಿಸಲಾಗಿದೆ. ಉಳಿದ ಎಲ್ಲಾ ವಿನ್ಯಾಸ, ಲೆಕ್ಕಾಚಾರಗಳು, Print, Import
-ಹಾಗೂ ನಿಮ್ಮ localStorage (fln_2026_27_karnataka_v1) ಡೇಟಾ ಯಾವುದನ್ನೂ ಬದಲಾಯಿಸಿಲ್ಲ —
-ಆದ್ದರಿಂದ ನಿಮ್ಮ ಹಾಲಿ ಯಾವುದೇ ಡೇಟಾ ಅಳಿಸಿಹೋಗುವುದಿಲ್ಲ.
 
-Excel Open ಆಗದಿರಲು ಇದ್ದ ಪ್ರಮುಖ ಕಾರಣಗಳು (Fixed):
-
-1.  OOXML Tag ಕ್ರಮದ ದೋಷ (<ignoredErrors> ನಂತರ <pageMargins>/<pageSetup>
-    ಸೇರ್ಪಡೆ): xlsx-js-style (SheetJS 0.18.5) ಫೈಲ್ ಬರೆಯುವಾಗ <ignoredErrors>
-    ಟ್ಯಾಗ್ ಅನ್ನು ಕೊನೆಯಲ್ಲಿ ಹಾಕುತ್ತದೆ. ಹಿಂದಿನ writeWorkbookWithA4Setup ಕೋಡ್
-    <pageMargins> ಹಾಗೂ <pageSetup> ಟ್ಯಾಗ್‌ಗಳನ್ನು </worksheet> ಮುಂಚೆ ಅಂದರೆ
-    <ignoredErrors> ನಂತರ ಹಾಕುತ್ತಿತ್ತು. ಇದು Excel ನ OOXML ನಿಯಮಕ್ಕೆ
-    ವಿರುದ್ಧವಾಗಿದ್ದರಿಂದ Excel ಫೈಲ್ ಅನ್ನು Open ಮಾಡುತ್ತಿರಲಿಲ್ಲ. ಈಗ ಅದನ್ನು ಸರಿಯಾದ
-    ಕ್ರಮದಲ್ಲಿ (<headerFooter> / <ignoredErrors> / <extLst> ಗಿಂತ ಮುಂಚೆ)
-    ಸೇರ್ಪಡಿಸಲಾಗಿದೆ.
-2.  Duplicate <sheetPr> ದೋಷ: <sheetPr/> ಇದ್ದಾಗ ಹಳೆಯ regex ಅದನ್ನು ಗುರುತಿಸದೆ ಎರಡನೇ
-    <sheetPr> ಸೇರಿಸುತ್ತಿತ್ತು — ಇದನ್ನು ಸರಿಪಡಿಸಲಾಗಿದೆ.
-3.  Fill Pattern & XML Control Characters: Excel ಬಣ್ಣಗಳಿಗೆ patternType: 'solid'
-    ಸೇರಿಸಲಾಗಿದೆ ಹಾಗೂ Copy-Paste ನಿಂದ ಬರಬಹುದಾದ ಅಮಾನ್ಯ XML ಅಕ್ಷರಗಳನ್ನು
-    ಸ್ವಚ್ಛಗೊಳಿಸಲಾಗಿದೆ.
-4.  ದಿನಾಂಕ ಬದಲಾವಣೆ ತಡೆ (1-2, 3-5 ಇತ್ಯಾದಿ): table_to_sheet ಗೆ { raw: true }
-    ನೀಡಿರುವುದರಿಂದ 1-2, 3-5 ನಂತಹ ಪಠ್ಯಗಳು ದಿನಾಂಕವಾಗಿ (02-Jan) ಬದಲಾಗುವುದಿಲ್ಲ ಮತ್ತು
-    ಸಂಖ್ಯೆಗಳು ಸರಿಯಾಗಿ Number ಆಗಿಯೇ ಉಳಿಯುತ್ತವೆ.
-
-ಕೆಳಗಿನ ಸಂಪೂರ್ಣ ಕೋಡ್ ಅನ್ನು index.html ಆಗಿ Save ಮಾಡಿ ಬಳಸಿ (ನಿಮ್ಮ ಹಳೆಯ ಎಲ್ಲಾ ಡೇಟಾ
-ಹಾಗೆಯೇ ಇರುತ್ತದೆ):
 
 <!DOCTYPE html>
 <html lang="kn">
@@ -3640,7 +3615,4 @@ Excel Open ಆಗದಿರಲು ಇದ್ದ ಪ್ರಮುಖ ಕಾರಣಗ
 </body>
 </html>
 
-(ಸಲಹೆ: ಸುರಕ್ಷತೆಗಾಗಿ ಒಮ್ಮೆ ಮೇಲಿನ 💾 Backup ಬಟನ್ ಒತ್ತಿ JSON ಫೈಲ್ ಸೇವ್ ಮಾಡಿಕೊಂಡು,
-ನಂತರ ಹೊಸ index.html ನಲ್ಲಿ 📊 Excel (ಈ ಪುಟ) ಮತ್ತು 📚 Full Excel (ಎಲ್ಲಾ ಶೀಟ್)
-ಪರೀಕ್ಷಿಸಿ ನೋಡಿ — ಈಗ Excel ನಲ್ಲಿ ಬಣ್ಣ, ಬಾರ್ಡರ್ ಮತ್ತು A4 Landscape ಸೆಟ್ಟಿಂಗ್ ಸಮೇತ
-ತಕ್ಷಣ Open ಆಗುತ್ತದೆ.)
+
