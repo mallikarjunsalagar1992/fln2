@@ -577,6 +577,7 @@
         appearance: none;
         border: none !important;
         padding: 0 !important;
+        font-size: inherit !important;
       }
 
       .grade-A, .grade-B {
@@ -584,11 +585,97 @@
         color: #000 !important;
       }
 
-      .cell-input-name { border: none !important; padding: 0 1px !important; }
+      .cell-input-name {
+        border: none !important;
+        padding: 0 1px !important;
+        font-size: inherit !important;
+        line-height: 1.2 !important;
+      }
 
       .notes-box { font-size: 6.4pt !important; padding: 2px 4px !important; margin-top: 3px !important; page-break-inside: avoid; }
       .notes-box h4 { font-size: 6.8pt !important; }
       .sig-footer { font-size: 7pt !important; margin-top: 10px !important; page-break-inside: avoid; }
+
+      /* Annexure-1: Spacious A4 Landscape print; thead repeats on Page 2+, school/cluster header stays on Page 1 only */
+      .a4-sheet.annex1-sheet {
+        zoom: 1 !important;
+      }
+      .a4-sheet.annex1-sheet .gov-header {
+        margin-bottom: 3px !important;
+        line-height: 1.2 !important;
+      }
+      .a4-sheet.annex1-sheet .gov-header .h-l1 { font-size: 9.5pt; }
+      .a4-sheet.annex1-sheet .gov-header .h-l2 { font-size: 8.2pt; }
+      .a4-sheet.annex1-sheet .gov-header .h-l3 { font-size: 7pt; }
+      .a4-sheet.annex1-sheet .gov-header .h-l4 { font-size: 8.5pt; margin-top: 1px; }
+      .a4-sheet.annex1-sheet .gov-header .h-subj,
+      .a4-sheet.annex1-sheet .gov-header .h-annex,
+      .a4-sheet.annex1-sheet .gov-header .h-subtitle {
+        font-size: 8pt;
+        padding: 2px 5px;
+        margin-top: 1.5px;
+      }
+      .a4-sheet.annex1-sheet .form-meta-bar {
+        font-size: 7.8pt;
+        padding: 3px 6px;
+        gap: 4px 12px;
+      }
+      .a4-sheet.annex1-sheet table.fln-table {
+        font-size: 7.4pt !important;
+        margin-top: 4px !important;
+      }
+      .a4-sheet.annex1-sheet table.fln-table thead th {
+        font-size: 6.7pt !important;
+        padding: 2px 2px !important;
+        line-height: 1.15 !important;
+      }
+      .a4-sheet.annex1-sheet table.fln-table tbody td {
+        padding: 3.5px 2px !important;
+        line-height: 1.25 !important;
+        font-size: 7.5pt !important;
+      }
+      .a4-sheet.annex1-sheet table.fln-table tfoot {
+        display: table-row-group !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      .a4-sheet.annex1-sheet table.fln-table tfoot td {
+        padding: 2.5px 2px !important;
+        line-height: 1.18 !important;
+        font-size: 7.2pt !important;
+      }
+      .a4-sheet.annex1-sheet table.fln-table.maths-table {
+        font-size: 6.4pt !important;
+      }
+      .a4-sheet.annex1-sheet table.fln-table.maths-table thead th {
+        font-size: 5.6pt !important;
+        padding: 1.5px 1.2px !important;
+        line-height: 1.12 !important;
+      }
+      .a4-sheet.annex1-sheet table.fln-table.maths-table tbody td {
+        padding: 3.2px 1.2px !important;
+        line-height: 1.22 !important;
+        font-size: 6.4pt !important;
+      }
+      .a4-sheet.annex1-sheet table.fln-table.maths-table tfoot td {
+        padding: 2.2px 1.2px !important;
+        line-height: 1.15 !important;
+        font-size: 6.2pt !important;
+      }
+      .a4-sheet.annex1-sheet .notes-box {
+        font-size: 7.2pt !important;
+        padding: 4px 6px !important;
+        margin-top: 5px !important;
+        line-height: 1.28 !important;
+      }
+      .a4-sheet.annex1-sheet .notes-box h4 {
+        font-size: 7.6pt !important;
+        margin-bottom: 2px !important;
+      }
+      .a4-sheet.annex1-sheet .sig-footer {
+        font-size: 8pt !important;
+        margin-top: 14px !important;
+      }
 
       /* Annexure-2 (School Consolidated Form) clean 2-page A4 Landscape Print with heading on Page 2 */
       .a4-sheet.annex2-sheet {
@@ -652,7 +739,7 @@
 
       tbody.class-block { page-break-inside: avoid; break-inside: avoid; }
       tr { page-break-inside: avoid; break-inside: avoid; }
-      thead { display: table-header-group; }
+      thead { display: table-header-group !important; }
       .page-break { page-break-before: always; break-before: page; }
     }
   </style>
@@ -2368,6 +2455,10 @@
       const maxPrintableHeightPx = 700;
       sheets.forEach(sheet => {
         sheet.style.zoom = '';
+        // Annex-1 uses 100% A4 Landscape width & spacious multi-page flow (thead repeats on Page 2+, gov/school header stays on Page 1)
+        if (sheet.classList.contains('annex1-sheet')) {
+          return;
+        }
         // Annexure-2: Split into 2 clean A4 Landscape pages so Page 2 gets ONLY the table heading (thead) without Gov/School header
         if (sheet.classList.contains('annex2-sheet')) {
           if (!sheet.dataset.annex2Split) {
@@ -2966,7 +3057,7 @@
       `;
 
       return `
-        <div class="a4-sheet">
+        <div class="a4-sheet annex1-sheet">
           ${buildGovTopHTML(subj, false)}
           <div class="form-meta-bar" id="annex1FormMeta">${buildAnnex1MetaInnerHTML(subj, cls)}</div>
           <div id="validationStrip" class="validation-strip no-print"></div>
@@ -3197,7 +3288,7 @@
       `;
 
       return `
-        <div class="a4-sheet maths-sheet">
+        <div class="a4-sheet maths-sheet annex1-sheet">
           ${buildGovTopHTML('math', false)}
           <div class="form-meta-bar" id="annex1FormMeta">${buildAnnex1MetaInnerHTML('math', cls)}</div>
           <div id="validationStrip" class="validation-strip no-print"></div>
@@ -3591,7 +3682,7 @@
             <th colspan="5">FN LO-1. ಮೂರು ಅಂಕಿಯ ಸಂಖ್ಯೆಯನ್ನು ಓದುವರು, ಬರೆಯುವರು ಮತ್ತು ಅರ್ಥೈಸಿಕೊಳ್ಳುವರು.</th>
             <th colspan="11">FN LO-2. ಕನಿಷ್ಠ ಮೂರು ಅಂಕೆಗಳ ಸಂಕಲನ, ವ್ಯವಕಲನ, ಗುಣಾಕಾರ ಮತ್ತು ಭಾಗಾಕಾರ ಲೆಕ್ಕಗಳನ್ನು ಮಾಡುವರು. (ತರಗತಿ 4-5)</th>
             <th colspan="6" rowspan="2">FN LO-3. ಗಣಿತದ ಮೂಲ ಕ್ರಿಯೆಗಳನ್ನು ಬಳಸಿ ವಾಕ್ಯ ರೂಪದ ಲೆಕ್ಕಗಳನ್ನು ಬಿಡಿಸುವರು.</th>
-            <th colspan="6" rowspan="2">FN LO-4. ನಿತ್ಯ ಜೀವನದಲ್ಲಿ ಗಣಿತದ ಕ್ರಿಯೆಗಳನ್ನು ಅನ್ವಯಿಸುವರು. (ಸಮಯ, ಹಣ, ಅಳತೆ ಮತ್ತು ದತ್ತಾಂಶ).</th>
+            <th colspan="6" rowspan="2">FLN LO-4. ನಿತ್ಯ ಜೀವನದಲ್ಲಿ ಗಣಿತದ ಕ್ರಿಯೆಗಳನ್ನು ಅನ್ವಯಿಸುವರು. (ಸಮಯ, ಹಣ, ಅಳತೆ ಮತ್ತು ದತ್ತಾಂಶ).</th>
           </tr>
           <tr>
             <th colspan="5">FN LO-1. ನಾಲ್ಕು ಅಂಕಿಯ ಸಂಖ್ಯೆಯನ್ನು ಓದುವರು, ಬರೆಯುವರು ಮತ್ತು ಅರ್ಥೈಸಿಕೊಳ್ಳುವರು.</th>
