@@ -510,7 +510,7 @@
 
     /* Print Rules for A4 Landscape */
     @media print {
-      @page { size: A4 landscape; margin: 7mm 8mm; }
+      @page { size: A4 landscape; margin: 6mm 8mm; }
 
       html, body {
         width: 100% !important;
@@ -590,70 +590,70 @@
       .notes-box h4 { font-size: 6.8pt !important; }
       .sig-footer { font-size: 7pt !important; margin-top: 10px !important; page-break-inside: avoid; }
 
-      /* Annexure-2 (School Consolidated Form) clean spacious A4 Landscape Print */
+      /* Annexure-2 (School Consolidated Form) clean 2-page A4 Landscape Print with heading on Page 2 */
       .a4-sheet.annex2-sheet {
         zoom: 1 !important;
       }
       .a4-sheet.annex2-sheet .gov-header {
-        margin-bottom: 3px !important;
-        line-height: 1.22 !important;
+        margin-bottom: 2px !important;
+        line-height: 1.15 !important;
       }
-      .a4-sheet.annex2-sheet .gov-header .h-l1 { font-size: 9.5pt; }
-      .a4-sheet.annex2-sheet .gov-header .h-l2 { font-size: 8.5pt; }
-      .a4-sheet.annex2-sheet .gov-header .h-l3 { font-size: 7pt; }
-      .a4-sheet.annex2-sheet .gov-header .h-l4 { font-size: 8.5pt; margin-top: 2px; }
+      .a4-sheet.annex2-sheet .gov-header .h-l1 { font-size: 9pt; }
+      .a4-sheet.annex2-sheet .gov-header .h-l2 { font-size: 8pt; }
+      .a4-sheet.annex2-sheet .gov-header .h-l3 { font-size: 6.5pt; }
+      .a4-sheet.annex2-sheet .gov-header .h-l4 { font-size: 8pt; margin-top: 1px; }
       .a4-sheet.annex2-sheet .gov-header .h-subj,
       .a4-sheet.annex2-sheet .gov-header .h-annex,
       .a4-sheet.annex2-sheet .gov-header .h-subtitle {
-        font-size: 8pt;
-        padding: 2px 5px;
-        margin-top: 2px;
+        font-size: 7.6pt;
+        padding: 1.5px 4px;
+        margin-top: 1px;
       }
       .a4-sheet.annex2-sheet .form-meta-bar {
-        font-size: 7.8pt;
-        padding: 3px 6px;
-        gap: 4px 12px;
+        font-size: 7.4pt;
+        padding: 2px 5px;
+        gap: 3px 10px;
       }
       .a4-sheet.annex2-sheet table.fln-table {
-        font-size: 7.5pt !important;
-        margin-top: 4px !important;
+        font-size: 7.2pt !important;
+        margin-top: 3px !important;
       }
       .a4-sheet.annex2-sheet table.fln-table thead th {
-        font-size: 6.6pt !important;
-        padding: 2px 1.5px !important;
-        line-height: 1.15 !important;
+        font-size: 6.4pt !important;
+        padding: 1.5px 1.5px !important;
+        line-height: 1.1 !important;
       }
       .a4-sheet.annex2-sheet table.fln-table tbody td {
-        padding: 2.5px 2px !important;
-        line-height: 1.22 !important;
+        padding: 1.8px 2px !important;
+        line-height: 1.15 !important;
       }
       .a4-sheet.annex2-sheet table.fln-table.maths-table {
-        font-size: 6.4pt !important;
+        font-size: 6.2pt !important;
       }
       .a4-sheet.annex2-sheet table.fln-table.maths-table thead th {
-        font-size: 5.5pt !important;
-        padding: 1.5px 1px !important;
-        line-height: 1.12 !important;
+        font-size: 5.3pt !important;
+        padding: 1.2px 1px !important;
+        line-height: 1.08 !important;
       }
       .a4-sheet.annex2-sheet table.fln-table.maths-table tbody td {
-        padding: 2px 1px !important;
-        line-height: 1.18 !important;
+        padding: 1.6px 1px !important;
+        line-height: 1.12 !important;
       }
       .a4-sheet.annex2-sheet .notes-box {
-        font-size: 7.2pt !important;
-        padding: 4px 6px !important;
-        margin-top: 6px !important;
-        line-height: 1.3 !important;
+        font-size: 7pt !important;
+        padding: 3px 5px !important;
+        margin-top: 4px !important;
+        line-height: 1.24 !important;
       }
       .a4-sheet.annex2-sheet .sig-footer {
-        font-size: 7.8pt !important;
-        margin-top: 14px !important;
+        font-size: 7.5pt !important;
+        margin-top: 10px !important;
       }
 
       tbody.class-block { page-break-inside: avoid; break-inside: avoid; }
       tr { page-break-inside: avoid; break-inside: avoid; }
       thead { display: table-header-group; }
-      .page-break { page-break-before: always; }
+      .page-break { page-break-before: always; break-before: page; }
     }
   </style>
 </head>
@@ -2368,8 +2368,34 @@
       const maxPrintableHeightPx = 700;
       sheets.forEach(sheet => {
         sheet.style.zoom = '';
-        // Annexure-2 uses native @media print CSS across A4 Landscape pages so rows stay spacious and readable
+        // Annexure-2: Split into 2 clean A4 Landscape pages so Page 2 gets ONLY the table heading (thead) without Gov/School header
         if (sheet.classList.contains('annex2-sheet')) {
+          if (!sheet.dataset.annex2Split) {
+            const table = sheet.querySelector('table.fln-table');
+            if (table) {
+              const blocks = Array.from(table.querySelectorAll('tbody.class-block'));
+              if (blocks.length > 4) {
+                const pageBreak = document.createElement('div');
+                pageBreak.className = 'page-break annex2-temp-break';
+
+                const table2 = document.createElement('table');
+                table2.className = table.className + ' annex2-temp-table2';
+
+                const colgroup = table.querySelector('colgroup');
+                if (colgroup) table2.appendChild(colgroup.cloneNode(true));
+                const thead = table.querySelector('thead');
+                if (thead) table2.appendChild(thead.cloneNode(true));
+
+                for (let i = 4; i < blocks.length; i++) {
+                  table2.appendChild(blocks[i]);
+                }
+
+                table.parentNode.insertBefore(pageBreak, table.nextSibling);
+                pageBreak.parentNode.insertBefore(table2, pageBreak.nextSibling);
+                sheet.dataset.annex2Split = '1';
+              }
+            }
+          }
           return;
         }
         const w = sheet.scrollWidth;
@@ -2392,6 +2418,18 @@
     function resetPrintA4Fit() {
       document.querySelectorAll('.a4-sheet').forEach(sheet => {
         sheet.style.zoom = '';
+        if (sheet.dataset.annex2Split) {
+          const table1 = sheet.querySelector('table.fln-table:not(.annex2-temp-table2)');
+          const table2 = sheet.querySelector('table.annex2-temp-table2');
+          const brk = sheet.querySelector('.annex2-temp-break');
+          if (table1 && table2) {
+            const blocks = Array.from(table2.querySelectorAll('tbody.class-block'));
+            blocks.forEach(b => table1.appendChild(b));
+            table2.remove();
+          }
+          if (brk) brk.remove();
+          delete sheet.dataset.annex2Split;
+        }
       });
     }
 
@@ -3859,5 +3897,3 @@
   </script>
 </body>
 </html>
-
-
