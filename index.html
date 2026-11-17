@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="kn">
 <head>
@@ -509,7 +510,7 @@
 
     /* Print Rules for A4 Landscape */
     @media print {
-      @page { size: A4 landscape; margin: 4mm; }
+      @page { size: A4 landscape; margin: 7mm 8mm; }
 
       html, body {
         width: 100% !important;
@@ -588,6 +589,66 @@
       .notes-box { font-size: 6.4pt !important; padding: 2px 4px !important; margin-top: 3px !important; page-break-inside: avoid; }
       .notes-box h4 { font-size: 6.8pt !important; }
       .sig-footer { font-size: 7pt !important; margin-top: 10px !important; page-break-inside: avoid; }
+
+      /* Annexure-2 (School Consolidated Form) clean spacious A4 Landscape Print */
+      .a4-sheet.annex2-sheet {
+        zoom: 1 !important;
+      }
+      .a4-sheet.annex2-sheet .gov-header {
+        margin-bottom: 3px !important;
+        line-height: 1.22 !important;
+      }
+      .a4-sheet.annex2-sheet .gov-header .h-l1 { font-size: 9.5pt; }
+      .a4-sheet.annex2-sheet .gov-header .h-l2 { font-size: 8.5pt; }
+      .a4-sheet.annex2-sheet .gov-header .h-l3 { font-size: 7pt; }
+      .a4-sheet.annex2-sheet .gov-header .h-l4 { font-size: 8.5pt; margin-top: 2px; }
+      .a4-sheet.annex2-sheet .gov-header .h-subj,
+      .a4-sheet.annex2-sheet .gov-header .h-annex,
+      .a4-sheet.annex2-sheet .gov-header .h-subtitle {
+        font-size: 8pt;
+        padding: 2px 5px;
+        margin-top: 2px;
+      }
+      .a4-sheet.annex2-sheet .form-meta-bar {
+        font-size: 7.8pt;
+        padding: 3px 6px;
+        gap: 4px 12px;
+      }
+      .a4-sheet.annex2-sheet table.fln-table {
+        font-size: 7.5pt !important;
+        margin-top: 4px !important;
+      }
+      .a4-sheet.annex2-sheet table.fln-table thead th {
+        font-size: 6.6pt !important;
+        padding: 2px 1.5px !important;
+        line-height: 1.15 !important;
+      }
+      .a4-sheet.annex2-sheet table.fln-table tbody td {
+        padding: 2.5px 2px !important;
+        line-height: 1.22 !important;
+      }
+      .a4-sheet.annex2-sheet table.fln-table.maths-table {
+        font-size: 6.4pt !important;
+      }
+      .a4-sheet.annex2-sheet table.fln-table.maths-table thead th {
+        font-size: 5.5pt !important;
+        padding: 1.5px 1px !important;
+        line-height: 1.12 !important;
+      }
+      .a4-sheet.annex2-sheet table.fln-table.maths-table tbody td {
+        padding: 2px 1px !important;
+        line-height: 1.18 !important;
+      }
+      .a4-sheet.annex2-sheet .notes-box {
+        font-size: 7.2pt !important;
+        padding: 4px 6px !important;
+        margin-top: 6px !important;
+        line-height: 1.3 !important;
+      }
+      .a4-sheet.annex2-sheet .sig-footer {
+        font-size: 7.8pt !important;
+        margin-top: 14px !important;
+      }
 
       tbody.class-block { page-break-inside: avoid; break-inside: avoid; }
       tr { page-break-inside: avoid; break-inside: avoid; }
@@ -1239,160 +1300,6 @@
       return styleObj;
     }
 
-    function createStyledWorksheetFromTable(combinedTable, totalCols) {
-      const occupied = {};
-      const cellMeta = {};
-      const rows = Array.from(combinedTable.querySelectorAll('tr'));
-      const totalRows = rows.length;
-
-      rows.forEach((tr, r) => {
-        let c = 0;
-        Array.from(tr.children).forEach(td => {
-          while (occupied[`${r},${c}`]) c++;
-          const rs = parseInt(td.getAttribute('rowspan') || '1', 10);
-          const cs = parseInt(td.getAttribute('colspan') || '1', 10);
-          const styleObj = deriveCellStyle(tr, td, totalCols);
-          const cleanText = td.textContent.replace(/\s+/g, ' ').trim();
-
-          for (let rr = r; rr < r + rs; rr++) {
-            for (let cc = c; cc < c + cs; cc++) {
-              occupied[`${rr},${cc}`] = true;
-              cellMeta[`${rr},${cc}`] = {
-                style: styleObj,
-                text: (rr === r && cc === c) ? cleanText : '',
-                rs,
-                cs,
-                isAnchor: (rr === r && cc === c)
-              };
-            }
-          }
-          c += cs;
-        });
-      });
-
-      const ws = XLSX.utils.table_to_sheet(combinedTable);
-
-      const colWidths = [];
-      for (let i = 0; i < totalCols; i++) {
-        if (totalCols <= 6) {
-          colWidths.push(i === 0 ? 7 : 34);
-        } else if (i === 0) {
-          colWidths.push(4.2);
-        } else if (i === 1) {
-          colWidths.push(totalCols >= 30 ? 14 : 18);
-        } else if (i === 2) {
-          colWidths.push(totalCols >= 30 ? 6.5 : 7.5);
-        } else if (totalCols >= 30 && i <= 4) {
-          colWidths.push(6);
-        } else {
-          colWidths.push(totalCols >= 30 ? 5.6 : 7.2);
-        }
-      }
-      ws['!cols'] = colWidths.map(wch => ({ wch }));
-
-      for (let r = 0; r < totalRows; r++) {
-        for (let c = 0; c < totalCols; c++) {
-          const meta = cellMeta[`${r},${c}`];
-          if (!meta) continue;
-          const addr = XLSX.utils.encode_cell({ r, c });
-          if (!ws[addr]) {
-            ws[addr] = { t: 's', v: '' };
-          }
-          ws[addr].s = meta.style;
-        }
-      }
-
-      const rowHeights = [];
-      const isMaths = totalCols >= 30;
-      for (let r = 0; r < totalRows; r++) {
-        let maxLines = 1;
-        const tr = rows[r];
-        if (tr.classList.contains('excel-sig')) {
-          rowHeights.push({ hpt: 32 });
-          continue;
-        }
-        for (let c = 0; c < totalCols; c++) {
-          const meta = cellMeta[`${r},${c}`];
-          if (!meta || !meta.isAnchor || !meta.text) continue;
-          let effW = 0;
-          for (let cc = c; cc < Math.min(totalCols, c + meta.cs); cc++) {
-            effW += colWidths[cc] || 6;
-          }
-          const charsPerLine = Math.max(4, Math.floor(effW * (isMaths ? 0.85 : 0.78)));
-          const wrappedLines = Math.ceil(meta.text.length / charsPerLine);
-          const perRowLines = Math.ceil(wrappedLines / meta.rs);
-          if (perRowLines > maxLines) maxLines = perRowLines;
-        }
-        const lineH = isMaths ? 11.5 : 12.5;
-        const hpt = Math.max(15, Math.min(115, maxLines * lineH + 4));
-        rowHeights.push({ hpt });
-      }
-      ws['!rows'] = rowHeights;
-
-      return ws;
-    }
-
-    async function writeWorkbookWithA4Setup(wb, filename, fitHeightFlags) {
-      if (typeof JSZip === 'undefined') {
-        XLSX.writeFile(wb, filename);
-        return;
-      }
-      try {
-        // ignoreEC:false -> <ignoredErrors> ಟ್ಯಾಗ್ ಬರೆಯದಂತೆ (ಇದು pageSetup ಕ್ರಮವನ್ನು ಕೆಡಿಸುತ್ತಿತ್ತು)
-        const wbOut = XLSX.write(wb, { type: 'array', bookType: 'xlsx', ignoreEC: false });
-        const zip = await JSZip.loadAsync(wbOut);
-
-        for (let i = 0; i < wb.SheetNames.length; i++) {
-          const path = `xl/worksheets/sheet${i + 1}.xml`;
-          const file = zip.file(path);
-          if (!file) continue;
-          let xml = await file.async('string');
-
-          const fitH = fitHeightFlags[i] ? '1' : '0';
-
-          if (/<sheetPr[\s>]/.test(xml)) {
-            xml = xml.replace(/<sheetPr[^>]*\/>|<sheetPr[\s\S]*?<\/sheetPr>/, '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
-          } else {
-            xml = xml.replace(/(<worksheet[^>]*>)/, '$1<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
-          }
-
-          xml = xml.replace(/<pageMargins[^>]*\/>/g, '');
-          xml = xml.replace(/<pageSetup[^>]*\/>/g, '');
-
-          const printTags = `<pageMargins left="0.18" right="0.18" top="0.22" bottom="0.22" header="0.1" footer="0.1"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="${fitH}"/>`;
-
-          // FIX: Excel ನಿಯಮದ ಪ್ರಕಾರ pageMargins/pageSetup ಈ ಟ್ಯಾಗ್‌ಗಳ ಮೊದಲೇ ಬರಬೇಕು.
-          // ಹಿಂದೆ ಇವು </worksheet> ಮೊದಲು (ignoredErrors ನಂತರ) ಸೇರುತ್ತಿದ್ದವು -> Excel ಫೈಲ್ ತೆರೆಯುತ್ತಿರಲಿಲ್ಲ.
-          const afterTags = ['headerFooter', 'rowBreaks', 'colBreaks', 'customProperties', 'cellWatches',
-            'ignoredErrors', 'smartTags', 'drawing', 'legacyDrawing', 'legacyDrawingHF', 'picture',
-            'oleObjects', 'controls', 'webPublishItems', 'tableParts', 'extLst'];
-          let insertAt = -1;
-          afterTags.forEach(tag => {
-            const m = new RegExp('<' + tag + '[\\s>/]').exec(xml);
-            if (m && (insertAt === -1 || m.index < insertAt)) insertAt = m.index;
-          });
-          if (insertAt === -1) insertAt = xml.lastIndexOf('</worksheet>');
-          xml = xml.slice(0, insertAt) + printTags + xml.slice(insertAt);
-
-          zip.file(path, xml);
-        }
-
-        const blob = await zip.generateAsync({
-          type: 'blob',
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-      } catch (err) {
-        console.warn('JSZip A4 injection fallback:', err);
-        XLSX.writeFile(wb, filename);
-      }
-    }
-
     function fallbackDownloadHtmlAsXls(tablesWithNames, filename) {
       const html = `
         <html xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -1405,7 +1312,7 @@
         <x:WorksheetOptions>
           <x:PageSetup>
             <x:Layout x:Orientation="Landscape"/>
-            <x:PageMargins x:Bottom="0.22" x:Left="0.18" x:Right="0.18" x:Top="0.22"/>
+            <x:PageMargins x:Bottom="0.35" x:Left="0.4" x:Right="0.4" x:Top="0.35"/>
           </x:PageSetup>
           <x:FitToPage/>
           <x:Print><x:ValidPrinterInfo/><x:PaperSizeIndex>9</x:PaperSizeIndex><x:FitWidth>1</x:FitWidth><x:FitHeight>0</x:FitHeight></x:Print>
@@ -1413,7 +1320,7 @@
         </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook>
         </xml><![endif]-->
         <style>
-          @page { size: A4 landscape; margin: 5mm; }
+          @page { size: A4 landscape; margin: 8mm 10mm; }
           table { border-collapse: collapse; margin-bottom: 24px; width: 100%; }
           th, td { border: 1px solid #000; padding: 3px; text-align: center; font-family: Arial, sans-serif; font-size: 8.5pt; }
           th { background: #ddebf7; font-weight: bold; }
@@ -1460,7 +1367,7 @@
     }
 
     // =========================================================================
-    // SELF-CONTAINED .XLSX WRITER (ಯಾವುದೇ CDN library ಬೇಕಿಲ್ಲ - Excel ನಲ್ಲಿ ಖಚಿತವಾಗಿ ತೆರೆಯುತ್ತದೆ)
+    // SELF-CONTAINED .XLSX WRITER
     // =========================================================================
     const XW_CRC_TABLE = (() => {
       const t = new Uint32Array(256);
@@ -1478,7 +1385,6 @@
       return (crc ^ 0xFFFFFFFF) >>> 0;
     }
 
-    // Simple ZIP (STORE method) builder
     function xwBuildZip(files) {
       const enc = new TextEncoder();
       const chunks = [];
@@ -1548,7 +1454,7 @@
 
     function xwEsc(s) {
       return String(s ?? '')
-        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F  ]/g, '')
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -1585,7 +1491,6 @@
       });
     }
 
-    // Style registry -> styles.xml
     function xwCreateStyleRegistry() {
       const fonts = ['<font><sz val="11"/><color rgb="FF000000"/><name val="Calibri"/><family val="2"/></font>'];
       const fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>'];
@@ -1674,7 +1579,6 @@
         });
       });
 
-      // Column widths (same as before)
       const colWidths = [];
       for (let i = 0; i < totalCols; i++) {
         if (totalCols <= 6) colWidths.push(i === 0 ? 7 : 34);
@@ -1685,7 +1589,6 @@
         else colWidths.push(totalCols >= 30 ? 5.6 : 7.2);
       }
 
-      // Row heights (same as before)
       const isMaths = totalCols >= 30;
       const rowHeights = [];
       for (let r = 0; r < totalRows; r++) {
@@ -1737,7 +1640,7 @@
         `<cols>${colsXml}</cols>` +
         `<sheetData>${sheetData}</sheetData>` +
         mergeXml +
-        '<pageMargins left="0.18" right="0.18" top="0.22" bottom="0.22" header="0.1" footer="0.1"/>' +
+        '<pageMargins left="0.4" right="0.4" top="0.35" bottom="0.35" header="0.15" footer="0.15"/>' +
         `<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="${fitHeight ? 1 : 0}"/>` +
         '</worksheet>';
     }
@@ -1769,7 +1672,7 @@
           '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
           '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
           '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
-          '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
+          '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/package/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
           '</Relationships>'
       });
 
@@ -2461,10 +2364,14 @@
     // =========================================================================
     function applyPrintA4Fit() {
       const sheets = document.querySelectorAll('.a4-sheet');
-      const maxPrintableWidthPx = 1045;
-      const maxPrintableHeightPx = 710;
+      const maxPrintableWidthPx = 1040;
+      const maxPrintableHeightPx = 700;
       sheets.forEach(sheet => {
         sheet.style.zoom = '';
+        // Annexure-2 uses native @media print CSS across A4 Landscape pages so rows stay spacious and readable
+        if (sheet.classList.contains('annex2-sheet')) {
+          return;
+        }
         const w = sheet.scrollWidth;
         let zoom = 1;
         if (w > maxPrintableWidthPx) {
@@ -2806,7 +2713,7 @@
             <th colspan="2" class="bg-cream">Written</th>
             <th class="bg-cream">Oral</th>
             <th class="bg-yellow">W &amp; O</th>
-            <th class="bg-cream">Written</th>
+            <th colspan="2" class="bg-cream">Written</th>
             <th class="bg-cream">Oral</th>
             <th class="bg-yellow">W &amp; O</th>
             <th class="bg-yellow">W &amp; O</th>
@@ -2893,7 +2800,7 @@
             <th>ಕ್ರ.<br/>ಸಂ.</th>
             <th>ವಿದ್ಯಾರ್ಥಿಯ ಹೆಸರು ↓</th>
             <th>ಲಿಂಗ</th>
-            <th>ಅಕ್ಷರ ಹಂತ: (ವರ್ಣಮಾಲೆ / ಕಾಗುಣಿತ / ಒತ್ತಕ್ಷರಗಳು-ಸಜಾತಿ &amp; ವಿಜಾತಿ)</th>
+            <th>ಅಕ್ಷರ ಹಂತ: (ವರ್ಣಮಾಲೆ / ಕಾಗುಣಿತ / ಒತ್ತಕ್ಷರ-ಸಜಾತಿ &amp; ವಿಜಾತಿ)</th>
             <th>ಪದ ಹಂತ: ಅರ್ಥ ಸಹಿತವಾಗಿ 2-4 ಅಕ್ಷರದ- ಒತ್ತಕ್ಷರ ರಹಿತ-ಸಹಿತ ಪದಗಳು</th>
             <th>ವಾಕ್ಯ ಹಂತ: ಅರ್ಥ ಸಹಿತವಾಗಿ 2-4 ಪದಗಳ ಒತ್ತಕ್ಷರ ರಹಿತ-ಸಹಿತ ವಾಕ್ಯಗಳು</th>
             <th>ಪ್ಯಾರಾ ಹಂತ: ಅರ್ಥ ಸಹಿತವಾಗಿ 3-5 ವಾಕ್ಯಗಳ ಪ್ಯಾರಾಗಳು</th>
@@ -3530,7 +3437,7 @@
       `;
 
       return `
-        <div class="a4-sheet">
+        <div class="a4-sheet annex2-sheet">
           ${buildGovTopHTML(subj, true)}
           <div class="form-meta-bar" id="annex2FormMeta">${buildAnnex2MetaInnerHTML()}</div>
           <table class="fln-table">
@@ -3747,7 +3654,7 @@
       `;
 
       return `
-        <div class="a4-sheet maths-sheet">
+        <div class="a4-sheet maths-sheet annex2-sheet">
           ${buildGovTopHTML('math', true)}
           <div class="form-meta-bar" id="annex2FormMeta">${buildAnnex2MetaInnerHTML()}</div>
           <table class="fln-table maths-table">
